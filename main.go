@@ -129,6 +129,6 @@ func main() {
 		Handler: mux,
 	}
 
-	log.Printf("Serving on: http://localhost:%s/app/\n", port)
+	log.Printf("Serving on: http://192.168.196.55:%s/app/\n", port)
 	log.Fatal(srv.ListenAndServe())
 }
