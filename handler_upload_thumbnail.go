@@ -64,7 +64,19 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Upload file to /assets/<videoID>.<file_extension>
-	fileName := fmt.Sprintf("%s.%s", videoIDString, contentType)
+	// Map MIME types to file extensions
+	mimeToExt := map[string]string{
+		"image/jpeg": "jpg",
+		"image/png":  "png",
+	}
+
+	fileExtention, ok := mimeToExt[contentType]
+	if !ok {
+		respondWithError(w, http.StatusBadRequest, "Unsupported image type", nil)
+		return
+	}
+
+	fileName := fmt.Sprintf("%s.%s", videoIDString, fileExtention)
 	pathToUpload := filepath.Join(cfg.assetsRoot, fileName)
 
 	// Create a new file
