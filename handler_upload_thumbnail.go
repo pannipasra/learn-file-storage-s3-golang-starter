@@ -77,7 +77,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	io.Copy(newFile, file)
 
 	// Update the video metadata
-	thumbnailURL := fmt.Sprintf("http://localhost:%v/assets/%v.%v", 8091, videoID, contentType)
+	thumbnailURL := fmt.Sprintf("http://localhost:%v/assets/%v.%v", 8091, videoIDString, contentType)
 	videoMetadata.ThumbnailURL = &thumbnailURL
 
 	err = cfg.db.UpdateVideo(videoMetadata)
