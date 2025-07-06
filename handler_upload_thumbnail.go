@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -64,19 +66,27 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Upload file to /assets/<videoID>.<file_extension>
-	// Map MIME types to file extensions
-	mimeToExt := map[string]string{
-		"image/jpeg": "jpg",
-		"image/png":  "png",
-	}
-
-	fileExtention, ok := mimeToExt[contentType]
-	if !ok {
-		respondWithError(w, http.StatusBadRequest, "Unsupported image type", nil)
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Invalid content type", err)
 		return
 	}
 
-	fileName := fmt.Sprintf("%s.%s", videoIDString, fileExtention)
+	// Only allow image/jpeg and image/png
+	if mediaType != "image/jpeg" && mediaType != "image/png" {
+		respondWithError(w, http.StatusBadRequest, "Only JPEG and PNG images are supported", nil)
+		return
+	}
+
+	// Extract file extension from media type (e.g., "image/png" -> "png")
+	parts := strings.Split(mediaType, "/")
+	if len(parts) != 2 {
+		respondWithError(w, http.StatusBadRequest, "Invalid media type format", nil)
+		return
+	}
+	fileExtension := parts[1]
+
+	fileName := fmt.Sprintf("%s.%s", videoIDString, fileExtension)
 	pathToUpload := filepath.Join(cfg.assetsRoot, fileName)
 
 	// Create a new file
