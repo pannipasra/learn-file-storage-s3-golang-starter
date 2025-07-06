@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -49,13 +50,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	// Get Content-Type
 	contentType := header.Header.Get("Content-Type")
 
-	// Read all the image data into a byte slice
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Unable to read video file ", err)
-		return
-	}
-
 	// Get the video's metadata from the SQLite database
 	videoMetadata, err := cfg.db.GetVideo(videoID)
 	if err != nil {
@@ -69,9 +63,21 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Upload file to /assets/<videoID>.<file_extension>
+	pathToUpload := filepath.Join(cfg.assetsRoot, videoIDString, contentType)
+
+	// Create a new file
+	newFile, err := os.Create(pathToUpload)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Can not create a new file", err)
+		return
+	}
+
+	// Copy the contents from the multipart.File to the new file on disk
+	io.Copy(newFile, file)
+
 	// Update the video metadata
-	thumbnailBase64 := base64.StdEncoding.EncodeToString(fileBytes)
-	thumbnailURL := fmt.Sprintf("data:%v;base64,%v", contentType, thumbnailBase64)
+	thumbnailURL := fmt.Sprintf("http://localhost:%v/assets/%v.%v", 8091, videoID, contentType)
 	videoMetadata.ThumbnailURL = &thumbnailURL
 
 	err = cfg.db.UpdateVideo(videoMetadata)
