@@ -64,7 +64,8 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Upload file to /assets/<videoID>.<file_extension>
-	pathToUpload := filepath.Join(cfg.assetsRoot, videoIDString, contentType)
+	fileName := fmt.Sprintf("%s.%s", videoIDString, contentType)
+	pathToUpload := filepath.Join(cfg.assetsRoot, fileName)
 
 	// Create a new file
 	newFile, err := os.Create(pathToUpload)
@@ -72,12 +73,17 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusInternalServerError, "Can not create a new file", err)
 		return
 	}
+	defer newFile.Close() // Important: close the file when done
 
 	// Copy the contents from the multipart.File to the new file on disk
-	io.Copy(newFile, file)
+	_, err = io.Copy(newFile, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Cannot write file contents", err)
+		return
+	}
 
 	// Update the video metadata
-	thumbnailURL := fmt.Sprintf("http://localhost:%v/assets/%v.%v", 8091, videoIDString, contentType)
+	thumbnailURL := fmt.Sprintf("http://localhost:%v/assets/%v", 8091, fileName)
 	videoMetadata.ThumbnailURL = &thumbnailURL
 
 	err = cfg.db.UpdateVideo(videoMetadata)
