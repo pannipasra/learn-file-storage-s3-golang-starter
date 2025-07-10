@@ -90,7 +90,11 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	// Make unique file name
 	randomBytes := make([]byte, 32)
-	rand.Read(randomBytes)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Cannot create random bytes", err)
+		return
+	}
 	randomName := base64.RawURLEncoding.EncodeToString(randomBytes)
 
 	fileName := fmt.Sprintf("%s.%s", randomName, fileExtension)
