@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -100,7 +101,12 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	//  Put object into s3
 	randomBytes := make([]byte, 32)
-	objectKey := fmt.Sprintf("%v.%v", hex.EncodeToString(randomBytes), mediaType)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong", nil)
+		return
+	}
+	objectKey := fmt.Sprintf("%s.%s", hex.EncodeToString(randomBytes), mediaType)
 	putObjectInput := &s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &objectKey,
@@ -110,7 +116,7 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	cfg.s3Client.PutObject(r.Context(), putObjectInput)
 
 	// Update the VideoURL of the video record in the database with the S3 bucket
-	videoURL := fmt.Sprintf("https://%v.s3.%v.amazonaws.com/%v", cfg.s3Bucket, cfg.s3Region, objectKey)
+	videoURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, objectKey)
 	videoMetadata.VideoURL = &videoURL
 
 	err = cfg.db.UpdateVideo(videoMetadata)
